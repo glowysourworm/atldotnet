@@ -35,6 +35,8 @@
   <PropertyGroup>
     <DebugType>embedded</DebugType>
     <Deterministic>True</Deterministic>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageOutputPath>$(NugetLocalPath)</PackageOutputPath>
   </PropertyGroup>
 
   <!-- Original / source : https://dev.to/j_sakamoto/writing-a-nuget-package-release-notes-in-an-outside-of-a-csproj-file-3f94 -->
