@@ -3,6 +3,7 @@ using System;
 using System.Text;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ATL.Logging;
 
 namespace Commons
@@ -37,6 +38,18 @@ namespace Commons
         private static readonly char[] DECIMAL_SEPARATORS = { ',', '.' };
 
         /// <summary>
+        /// 0-9 digits as arabic and farsi characters
+        /// </summary>
+        private static readonly string[] NUMERAL_DIGITS = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+        private static readonly string[] ARABIC_DIGITS = { "٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩" };
+        private static readonly string[] FARSI_DIGITS = { "۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹" };
+        
+        private static long RoundToNearest10(long number)
+        {
+            return (number + 5) / 10;
+        }
+
+        /// <summary>
         /// Transform the given string so that is becomes non-null
         /// </summary>
         /// <param name="value">String to protect</param>
@@ -45,12 +58,21 @@ namespace Commons
         {
             return value ?? "";
         }
+        
+        public enum TimecodeEncodeFormat
+        {
+            DD_HH_MM_SS_UUUU,
+            MM_SS_UUUU,
+            MM_SS_XX
+        }
 
         /// <summary>
         /// Format the given duration using the following format
         ///     DDdHH:MM:SS.UUUU
         ///     OR
         ///     MM:SS.UUUU
+        ///     OR
+        ///     MM:SS.XX(XX will always have 2 digits)
         ///     
         ///  Where
         ///     DD is the number of days, if applicable (i.e. durations of less than 1 day won't display the "DDd" part)
@@ -58,17 +80,19 @@ namespace Commons
         ///     MM is the number of minutes, when using MMSS format, this will extend beyond two digits if necessary
         ///     SS is the number of seconds
         ///     UUUU is the number of milliseconds
+        ///     XX is the number of centiseconds (i.e. milliseconds rounded to the nearest 10, or hundredths of a second). LRC formats use this convention
         /// </summary>
         /// <param name="milliseconds">Duration to format (in milliseconds)</param>
-        /// <param name="useMmSsFormat">Format in MM:SS.UUUU format. Default is false</param>
+        /// <param name="format">Format in MM:SS.UUUU format. Default is false</param>
         /// <returns>Formatted duration according to the abovementioned convention</returns>
-        public static string EncodeTimecode_ms(long milliseconds, bool useMmSsFormat = false)
+        public static string EncodeTimecode_ms(long milliseconds, TimecodeEncodeFormat format = TimecodeEncodeFormat.DD_HH_MM_SS_UUUU)
         {
             long seconds = Convert.ToInt64(Math.Floor(milliseconds / 1000.00));
 
-            var encodedString = useMmSsFormat ? EncodeMmSsTimecode_s(seconds) : EncodeTimecode_s(seconds);
+            var encodedString = format != TimecodeEncodeFormat.DD_HH_MM_SS_UUUU ? EncodeMmSsTimecode_s(seconds) : EncodeTimecode_s(seconds);
 
-            return encodedString + "." + (milliseconds - seconds * 1000);
+            return format == TimecodeEncodeFormat.MM_SS_XX ? encodedString + "." + RoundToNearest10(milliseconds - seconds * 1000).ToString("D2")
+                : encodedString + "." + (milliseconds - seconds * 1000);
         }
 
         /// <summary>
@@ -128,7 +152,7 @@ namespace Commons
 
         /// <summary>
         /// Convert the duration of the given timecode to milliseconds
-        /// Supported formats : hh:mm, hh:mm:ss.ddd, mm:ss, hh:mm:ss and mm:ss.ddd
+        /// Supported formats : hh:mm, hh:mm:ss.dd, hh:mm:ss.ddd, mm:ss, hh:mm:ss, mm:ss.dd and mm:ss.ddd
         /// </summary>
         /// <param name="timeCode">Timecode to convert</param>
         /// <returns>Duration of the given timecode expressed in milliseconds if succeeded; -1 if failed</returns>
@@ -139,59 +163,52 @@ namespace Commons
 
             bool valid = false;
 
-            if (DateTime.TryParse(timeCode, out var dateTime))
+        
+            int days = 0;
+            int hours = 0;
+            int milliseconds = 0;
+
+            if (timeCode.Contains(':'))
             {
-                // Handle classic cases hh:mm, hh:mm:ss.ddd (the latter being the spec)
                 valid = true;
-                result = dateTime.Millisecond;
-                result += dateTime.Second * 1000;
-                result += dateTime.Minute * 60 * 1000;
-                result += dateTime.Hour * 60 * 60 * 1000;
-            }
-            else // Handle mm:ss, hh:mm:ss and mm:ss.ddd
-            {
-                int days = 0;
-                int hours = 0;
-                int milliseconds = 0;
-
-                if (timeCode.Contains(':'))
+                string[] parts = timeCode.Split(':');
+                if (parts[^1].Contains('.'))
                 {
-                    valid = true;
-                    string[] parts = timeCode.Split(':');
-                    if (parts[^1].Contains('.'))
-                    {
-                        string[] subPart = parts[^1].Split('.');
-                        parts[^1] = subPart[0];
-                        milliseconds = int.Parse(subPart[1]);
-                    }
-                    else if (parts[^1].Contains(','))
-                    {
-                        string[] subPart = parts[^1].Split(',');
-                        parts[^1] = subPart[0];
-                        milliseconds = int.Parse(subPart[1]);
-                    }
-                    var seconds = int.Parse(parts[^1]);
-                    var minutes = int.Parse(parts[^2]);
-                    if (parts.Length >= 3)
-                    {
-                        string[] subPart = parts[^3].Split('d');
-                        if (subPart.Length > 1)
-                        {
-                            days = int.Parse(subPart[0].Trim());
-                            hours = int.Parse(subPart[1].Trim());
-                        }
-                        else
-                        {
-                            hours = int.Parse(subPart[0]);
-                        }
-                    }
-
-                    result = milliseconds;
-                    result += seconds * 1000;
-                    result += minutes * 60 * 1000;
-                    result += hours * 60 * 60 * 1000;
-                    result += days * 24 * 60 * 60 * 1000;
+                    string[] subPart = parts[^1].Split('.');
+                    parts[^1] = subPart[0];
+                    milliseconds = int.Parse(subPart[1]);
+                    // Handle centiseconds notation (2 digits after second)
+                    if (2 == subPart[1].Length) milliseconds *= 10;
                 }
+                else if (parts[^1].Contains(','))
+                {
+                    string[] subPart = parts[^1].Split(',');
+                    parts[^1] = subPart[0];
+                    milliseconds = int.Parse(subPart[1]);
+                    // Handle centiseconds notation (2 digits after second)
+                    if (2 == subPart[1].Length) milliseconds *= 10;
+                }
+                var seconds = int.Parse(parts[^1]);
+                var minutes = int.Parse(parts[^2]);
+                if (parts.Length >= 3)
+                {
+                    string[] subPart = parts[^3].Split('d');
+                    if (subPart.Length > 1)
+                    {
+                        days = int.Parse(subPart[0].Trim());
+                        hours = int.Parse(subPart[1].Trim());
+                    }
+                    else
+                    {
+                        hours = int.Parse(subPart[0]);
+                    }
+                }
+
+                result = milliseconds;
+                result += seconds * 1000;
+                result += minutes * 60 * 1000;
+                result += hours * 60 * 60 * 1000;
+                result += days * 24 * 60 * 60 * 1000;
             }
 
             if (!valid) result = -1;
@@ -256,7 +273,9 @@ namespace Commons
 		public static bool TryExtractDateTimeFromDigits(string str, out DateTime? date)
         {
             date = null;
-            if (!IsNumeric(str, true, false)) return false;
+            if (string.IsNullOrEmpty(str)) return false;
+            str = convertDigits(str);
+            if (str.Any(t => !IsDigit(t))) return false;
 
             switch (str.Length)
             {
@@ -292,6 +311,21 @@ namespace Commons
         }
 
         /// <summary>
+        /// Converts arabic [٠-٩] and Farsi digits [۰-۹] of the given string into numeral digits [0-9]
+        /// </summary>
+        private static string convertDigits(string s)
+        {
+            string result = s;
+
+            for (int i = 0; i <= 9; i++)
+            {
+                result = result.Replace(ARABIC_DIGITS[i], NUMERAL_DIGITS[i]).Replace(FARSI_DIGITS[i], NUMERAL_DIGITS[i]);
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Strip the given string from all ending null '\0' characters
         /// </summary>
         /// <param name="iStr">String to process</param>
@@ -302,7 +336,7 @@ namespace Commons
             int i = iStr.Length;
             while (i > 0 && '\0' == iStr[i - 1]) i--;
 
-            return iStr.Substring(0, i);
+            return iStr[..i];
         }
 
         /// <summary>
@@ -378,7 +412,7 @@ namespace Commons
                 else
                 {
                     Array.Copy(data, 0, result, result.Length - data.Length, data.Length);
-                    for (int i = 0; i < (result.Length - data.Length); i++) result[i] = paddingByte;
+                    for (int i = 0; i < result.Length - data.Length; i++) result[i] = paddingByte;
                 }
             }
             else
@@ -438,7 +472,7 @@ namespace Commons
         {
             // Each 3 byte sequence in the source data becomes a 4 byte
             // sequence in the character array. 
-            long arrayLength = (long)((4.0d / 3.0d) * data.Length);
+            long arrayLength = (long)(4.0d / 3.0d * data.Length);
 
             // If array length is not divisible by 4, go up to the next
             // multiple of 4.
@@ -451,7 +485,7 @@ namespace Commons
 
             Convert.ToBase64CharArray(data, 0, data.Length, dataChar, 0);
 
-            return Utils.Latin1Encoding.GetBytes(dataChar);
+            return Latin1Encoding.GetBytes(dataChar);
         }
 
         /// <summary>
@@ -472,7 +506,7 @@ namespace Commons
             for (int i = 0; i < s.Length; i++)
             {
                 char t = s[i];
-                if (t == '.' || t == ',')
+                if (t is '.' or ',')
                 {
                     if (allowsOnlyIntegers) return false;
                 }
@@ -486,7 +520,7 @@ namespace Commons
         }
 
         /// <summary>
-        /// Indicate if the given character represents a non-decimal digit (0..9)
+        /// Indicate if the given character represents a non-decimal numeral digit (0..9)
         /// </summary>
         /// <param name="c">Character to analyze</param>
         /// <returns>True if char is between 0..9; false instead</returns>

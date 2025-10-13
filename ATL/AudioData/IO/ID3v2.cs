@@ -692,7 +692,11 @@ namespace ATL.AudioData.IO
 
 
             // Read frame header and check frame ID
-            frame.ID = TAG_VERSION_2_2 == m_tagVersion ? Utils.Latin1Encoding.GetString(source.ReadBytes(3)) : Utils.Latin1Encoding.GetString(source.ReadBytes(4));
+            int frameIdSize = TAG_VERSION_2_2 == m_tagVersion ? 3 : 4;
+            frame.ID = Utils.Latin1Encoding.GetString(source.ReadBytes(frameIdSize));
+
+            // Tag ID couldn't be read (EOF)
+            if (frame.ID.Length < frameIdSize) return true;
 
             if (!char.IsLetter(frame.ID[0]) || !char.IsUpper(frame.ID[0]))
             {
@@ -1259,6 +1263,8 @@ namespace ATL.AudioData.IO
         /// <returns>True if writing operation succeeded; false if not</returns>
         protected override int write(TagData tag, Stream s, string zone)
         {
+            if (zone == "id3_remove") return 0;
+
             using BinaryWriter w = new BinaryWriter(s, Encoding.UTF8, true);
             return write(tag, w);
         }
