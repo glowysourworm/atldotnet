@@ -1,11 +1,4 @@
-﻿using BenchmarkDotNet.Running;
-using Commons;
-using System;
-using System.Diagnostics.Metrics;
-using System.IO;
-using ATL.Playlist;
-using ATL.AudioData;
-using ATL.AudioData.IO;
+﻿using Commons;
 
 namespace ATL.benchmark
 {
@@ -29,7 +22,11 @@ namespace ATL.benchmark
 
             //browseFor(@"D:\Music\", "*.mp3");
 
-            info(@"D:\temp\m4a-mp4\356\356.mp3");
+            // info(@"D:\temp\wav\359\359.WAV");
+
+            writeAt(@"D:\temp\wav\359\359.wav");
+
+            //removeAt(@"D:\temp\wav\359\359.WAV");
 
             //displayVersionInfo();
         }
@@ -37,7 +34,7 @@ namespace ATL.benchmark
         static private void readAt(string filePath, bool useTagLib = false)
         {
             FileFinder ff = new FileFinder();
-            ConsoleLogger log = new ConsoleLogger();
+            new ATL.Logging.ConsoleLogger();
 
             //            Console.WriteLine(filePath);
 
@@ -104,7 +101,7 @@ namespace ATL.benchmark
                 //Settings.FileBufferSize = 512;
                 //                Settings.ID3v2_tagSubVersion = 3;
 
-                new ConsoleLogger();
+                new ATL.Logging.ConsoleLogger();
                 Console.WriteLine(">>> WRITE : BEGIN @ " + testFileLocation);
 
                 Writing w = new Writing();
@@ -119,16 +116,41 @@ namespace ATL.benchmark
             }
         }
 
+        static private void removeAt(string filePath)
+        {
+            string testFileLocation = TestUtils.GenerateTempTestFile(filePath);
+            try
+            {
+                //Settings.ForceDiskIO = true;
+                Settings.FileBufferSize = 2 * 1024 * 1024;
+                //Settings.FileBufferSize = 512;
+                //                Settings.ID3v2_tagSubVersion = 3;
+
+                new ATL.Logging.ConsoleLogger();
+                Console.WriteLine(">>> REMOVE: BEGIN @ " + testFileLocation);
+
+                Writing w = new Writing();
+                w.performRemove(testFileLocation, 2);
+                Console.WriteLine(">>> REMOVE : END");
+
+                Console.ReadLine();
+            }
+            finally
+            {
+                File.Delete(testFileLocation);
+            }
+        }
+
         static private void reduce(string filePath)
         {
-            new ConsoleLogger();
+            new ATL.Logging.ConsoleLogger();
             new Reduce().reduce(filePath);
             Console.ReadLine();
         }
 
         static private void info(string filePath)
         {
-            new ConsoleLogger();
+            new ATL.Logging.ConsoleLogger();
             Console.WriteLine(">>> INFO : BEGIN @ " + filePath);
             //Settings.MP3_parseExactDuration = true;
 

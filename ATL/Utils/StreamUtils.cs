@@ -13,22 +13,6 @@ namespace ATL
     internal static partial class StreamUtils
     {
         /// <summary>
-        /// Determines if the given byte array begins with the other
-        /// </summary>
-        /// <param name="data">First array to be tested</param>
-        /// <param name="beginning">Second array to be tested</param>
-        /// <returns>True if the first array begins with all bytes from the second array; false if not</returns>
-        public static bool ArrBeginsWith(byte[] data, byte[] beginning)
-        {
-            if (data.Length < beginning.Length) return false;
-            for (int i = 0; i < beginning.Length; i++)
-            {
-                if (data[i] != beginning[i]) return false;
-            }
-            return true;
-        }
-
-        /// <summary>
         /// Convenient converter for the use of CopySameStream only, where this goes into Min immediately
         /// </summary>
         /// <param name="value">Value to convert</param>
@@ -39,16 +23,6 @@ namespace ATL
             return Convert.ToInt32(value);
         }
 
-        /// <summary>
-        /// Decode an unsigned Big-Endian 16-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static ushort DecodeBEUInt16(byte[] data)
-        {
-            if (data.Length < 2) throw new InvalidDataException($"Data should be at least 2 bytes long; found {data.Length} bytes");
-            return (ushort)((data[0] << 8) | (data[1] << 0));
-        }
 
         /// <summary>
         /// Encode the given value into an array of bytes as a Big-Endian 16-bits integer
@@ -62,28 +36,6 @@ namespace ATL
         }
 
         /// <summary>
-        /// Decode an unsigned Little-Endian 16-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static ushort DecodeUInt16(byte[] data)
-        {
-            if (data.Length < 2) throw new InvalidDataException($"Data should be at least 2 bytes long; found {data.Length} bytes");
-            return (ushort)((data[0]) | (data[1] << 8));
-        }
-
-        /// <summary>
-        /// Decode an signed Little-Endian 16-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static short DecodeInt16(byte[] data)
-        {
-            if (data.Length < 2) throw new InvalidDataException($"Data should be at least 2 bytes long; found {data.Length} bytes");
-            return (short)(data[0] | (data[1] << 8));
-        }
-
-        /// <summary>
         /// Encode the given value into an array of bytes as a Big-Endian 16-bits integer
         /// </summary>
         /// <param name="value">Value to be encoded</param>
@@ -92,17 +44,6 @@ namespace ATL
         {
             // Output has to be big-endian
             return new[] { (byte)((value & 0xFF00) >> 8), (byte)(value & 0x00FF) };
-        }
-
-        /// <summary>
-        /// Decode a signed Big-Endian 16-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static short DecodeBEInt16(byte[] data)
-        {
-            if (data.Length < 2) throw new InvalidDataException($"Data should be at least 2 bytes long; found {data.Length} bytes");
-            return (short)((data[0] << 8) | (data[1] << 0));
         }
 
         /// <summary>
@@ -122,7 +63,7 @@ namespace ATL
         /// <param name="data">Array of bytes to read value from</param>
         /// <param name="offset">Offset to read value from (default : 0)</param>
         /// <returns>Decoded value</returns>
-        public static uint DecodeBEUInt24(byte[] data, int offset = 0)
+        public static uint DecodeBEUInt24(ReadOnlySpan<byte> data, int offset = 0)
         {
             if (data.Length - offset < 3) throw new InvalidDataException($"Value should at least contain 3 bytes after offset; actual size={data.Length - offset} bytes");
             return (uint)(data[offset] << 16 | data[offset + 1] << 8 | data[offset + 2]);
@@ -142,17 +83,6 @@ namespace ATL
         }
 
         /// <summary>
-        /// Decode an unsigned Big-Endian 32-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static uint DecodeBEUInt32(byte[] data)
-        {
-            if (data.Length < 4) throw new InvalidDataException($"Data should be at least 4 bytes long; found {data.Length} bytes");
-            return (uint)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3] << 0));
-        }
-
-        /// <summary>
         /// Decode an unsigned Big-Endian 40-bit integer from the given array of bytes
         /// </summary>
         /// <param name="data">Array of bytes to read value from</param>
@@ -164,28 +94,6 @@ namespace ATL
         }
 
         /// <summary>
-        /// Decode an unsigned Big-Endian 64-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static ulong DecodeBEUInt64(byte[] data)
-        {
-            if (data.Length < 8) throw new InvalidDataException($"Data should be at least 8 bytes long; found {data.Length} bytes");
-            return ((ulong)data[0] << 56) | ((ulong)data[1] << 48) | ((ulong)data[2] << 40) | ((ulong)data[3] << 32) | ((ulong)data[4] << 24) | ((ulong)data[5] << 16) | ((ulong)data[6] << 8) | ((ulong)data[7] << 0);
-        }
-
-        /// <summary>
-        /// Decode an unsigned Little-Endian 32-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static uint DecodeUInt32(byte[] data)
-        {
-            if (data.Length < 4) throw new InvalidDataException($"Data should be at least 4 bytes long; found {data.Length} bytes");
-            return (uint)(data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24));
-        }
-
-        /// <summary>
         /// Encode the given value into an array of bytes as a Big-Endian unsigned 32-bits integer
         /// </summary>
         /// <param name="value">Value to be encoded</param>
@@ -194,17 +102,6 @@ namespace ATL
         {
             // Output has to be big-endian
             return new[] { (byte)((value & 0xFF000000) >> 24), (byte)((value & 0x00FF0000) >> 16), (byte)((value & 0x0000FF00) >> 8), (byte)(value & 0x000000FF) };
-        }
-
-        /// <summary>
-        /// Decode a signed Big-Endian 32-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static int DecodeBEInt32(byte[] data)
-        {
-            if (data.Length < 4) throw new InvalidDataException($"Data should be at least 4 bytes long; found {data.Length} bytes");
-            return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3] << 0);
         }
 
         /// <summary>
@@ -239,17 +136,6 @@ namespace ATL
         }
 
         /// <summary>
-        /// Decode a signed Little-Endian 32-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static int DecodeInt32(byte[] data)
-        {
-            if (data.Length < 4) throw new InvalidDataException($"Data should be at least 4 bytes long; found {data.Length} bytes");
-            return (data[0]) | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-        }
-
-        /// <summary>
         /// Encode the given value into an array of bytes as a Big-Endian unsigned 40-bits integer
         /// </summary>
         /// <param name="value">Value to be encoded</param>
@@ -258,39 +144,6 @@ namespace ATL
         {
             // Output has to be big-endian
             return new[] { (byte)((value & 0xFF00000000) >> 32), (byte)((value & 0x00FF000000) >> 24), (byte)((value & 0x0000FF0000) >> 16), (byte)((value & 0x000000FF00) >> 8), (byte)(value & 0x00000000FF) };
-        }
-
-        /// <summary>
-        /// Decode an unsigned Little-Endian 64-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static ulong DecodeUInt64(byte[] data)
-        {
-            if (data.Length < 8) throw new InvalidDataException($"Data should be at least 8 bytes long; found {data.Length} bytes");
-            return data[0] | ((ulong)data[1] << 8) | ((ulong)data[2] << 16) | ((ulong)data[3] << 24) | ((ulong)data[4] << 32) | ((ulong)data[5] << 40) | ((ulong)data[6] << 48) | ((ulong)data[7] << 56);
-        }
-
-        /// <summary>
-        /// Decode a signed Little-Endian 64-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static long DecodeInt64(byte[] data)
-        {
-            if (data.Length < 8) throw new InvalidDataException($"Data should be at least 8 bytes long; found {data.Length} bytes");
-            return (data[0]) | ((long)data[1] << 8) | ((long)data[2] << 16) | ((long)data[3] << 24) | ((long)data[4] << 32) | ((long)data[5] << 40) | ((long)data[6] << 48) | ((long)data[7] << 56);
-        }
-
-        /// <summary>
-        /// Decode a signed Big-Endian 64-bit integer from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static long DecodeBEInt64(byte[] data)
-        {
-            if (data.Length < 8) throw new InvalidDataException($"Data should be at least 8 bytes long; found {data.Length} bytes");
-            return ((long)data[0] << 56) | ((long)data[1] << 48) | ((long)data[2] << 40) | ((long)data[3] << 32) | ((long)data[4] << 24) | ((long)data[5] << 16) | ((long)data[6] << 8) | ((long)data[7] << 0);
         }
 
         /// <summary>
@@ -315,22 +168,8 @@ namespace ATL
         }
 
         /// <summary>
-        /// Decode a signed Big-Endian 64-bit floating-point from the given array of bytes
-        /// </summary>
-        /// <param name="data">Array of bytes to read value from</param>
-        /// <returns>Decoded value</returns>
-        public static double DecodeBEDouble(byte[] data)
-        {
-            if (data.Length < 8) throw new InvalidDataException($"Data should be at least 8 bytes long; found {data.Length} bytes");
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(data);
-
-            return BitConverter.ToDouble(data, 0);
-        }
-
-        /// <summary>
         /// Guess the encoding from the file Byte Order Mark (BOM)
-        /// http://en.wikipedia.org/wiki/Byte_order_mark 
+        /// http://en.wikipedia.org/wiki/Byte_order_mark
         /// NB : This obviously only works for files that actually start with a BOM
         /// </summary>
         /// <param name="file">FileStream to read from</param>
@@ -338,8 +177,8 @@ namespace ATL
         public static Encoding GetEncodingFromFileBOM(FileStream file)
         {
             Encoding result;
-            byte[] bom = new byte[4]; // Get the byte-order mark, if there is one
-            if (file.Read(bom, 0, 4) < 4) return Settings.DefaultTextEncoding;
+            Span<byte> bom = stackalloc byte[4]; // Get the byte-order mark, if there is one
+            if (file.Read(bom) < 4) return Settings.DefaultTextEncoding;
             if (bom[0] == 0xef && bom[1] == 0xbb && bom[2] == 0xbf) // utf-8
             {
                 result = Encoding.UTF8;
@@ -405,7 +244,7 @@ namespace ATL
         {
             int nbChars = encoding.Equals(Encoding.BigEndianUnicode) || encoding.Equals(Encoding.Unicode) ? 2 : 1;
             byte[] readBytes = new byte[limit > 0 ? limit : 100];
-            byte[] buffer = new byte[2];
+            Span<byte> buffer = stackalloc byte[nbChars];
             int nbRead = 0;
             long streamLength = r.Length;
             long initialPos = r.Position;
@@ -414,7 +253,7 @@ namespace ATL
             while (streamPos < streamLength && (0 == limit || nbRead < limit))
             {
                 // Read the size of a character
-                if (r.Read(buffer, 0, nbChars) < nbChars) break;
+                if (r.Read(buffer) < nbChars) break;
 
                 if (1 == nbChars && 0 == buffer[0]) // Null character read for single-char encodings
                 {
@@ -467,7 +306,7 @@ namespace ATL
         /// </summary>
         /// <param name="data">4-byte array containing to convert</param>
         /// <returns>Decoded Int32</returns>
-        public static int DecodeSynchSafeInt32(byte[] data)
+        public static int DecodeSynchSafeInt32(ReadOnlySpan<byte> data)
         {
             if (data.Length < 4) throw new ArgumentException($"Array length has to be at least 4 bytes; found : {data.Length} bytes");
 
@@ -487,7 +326,7 @@ namespace ATL
         /// <returns>Encoded array of bytes</returns>
         public static byte[] EncodeSynchSafeInt(int value, int nbBytes)
         {
-            if (nbBytes < 1 || nbBytes > 5) throw new ArgumentException("nbBytes has to be 1 to 5; found : " + nbBytes);
+            if (nbBytes is < 1 or > 5) throw new ArgumentException("nbBytes has to be 1 to 5; found : " + nbBytes);
             byte[] result = new byte[nbBytes];
 
             for (int i = 0; i < nbBytes; i++)
@@ -568,7 +407,7 @@ namespace ATL
         /// <summary>
         /// Read the given number of bits from the given position and converts it to an unsigned int32
         /// according to big-endian convention
-        /// 
+        ///
         /// NB : reader position _always_ progresses by 4, no matter how many bits are needed
         /// </summary>
         /// <param name="source">Stream to read the data from</param>
@@ -577,12 +416,12 @@ namespace ATL
         /// <returns>Unsigned int32 formed from read bits, according to big-endian convention</returns>
         public static uint ReadBEBits(Stream source, int bitPosition, int bitCount)
         {
-            if (bitCount < 1 || bitCount > 32) throw new NotSupportedException("Bit count must be between 1 and 32");
-            byte[] buffer = new byte[4];
+            if (bitCount is < 1 or > 32) throw new NotSupportedException("Bit count must be between 1 and 32");
+            Span<byte> buffer = stackalloc byte[4];
 
             source.Seek(bitPosition / 8, SeekOrigin.Begin); // integer division =^ div
-            if (source.Read(buffer, 0, buffer.Length) < buffer.Length) return 0;
-            uint result = DecodeBEUInt32(buffer);
+            if (source.Read(buffer) < buffer.Length) return 0;
+            uint result = BinaryPrimitives.ReadUInt32BigEndian(buffer);
             result = (result << (bitPosition % 8)) >> (32 - bitCount);
 
             return result;
@@ -592,14 +431,14 @@ namespace ATL
         /// Extracts a little-endian integer from the given byte array, using the given bits position and length
         /// Credits go to https://stackoverflow.com/questions/63788666/c-sharp-fastest-method-get-integer-from-part-of-bits
         /// </summary>
-        public static int ReadBits(byte[] source, int offset, int length)
+        public static int ReadBits(ReadOnlySpan<byte> source, int offset, int length)
         {
             if (offset + length > source.Length * 8) throw new NotSupportedException("Incompatible parameters");
             if (offset + length > 32) throw new NotSupportedException("Only supports 32-bit input or less");
 
-            byte[] intBytes = new byte[4];
-            Array.Copy(source, 0, intBytes, 0, Math.Min(4, source.Length));
-            int full = DecodeInt32(intBytes);
+            Span<byte> intBytes = stackalloc byte[4];
+            source[..Math.Min(4, source.Length)].CopyTo(intBytes);
+            int full = BinaryPrimitives.ReadInt32LittleEndian(intBytes);
             int mask = (1 << length) - 1;
             return (full >> offset) & mask;
         }
@@ -649,17 +488,17 @@ namespace ATL
         /// <summary>
         /// Convert the given extended-format byte array (which is assumed to be in little-endian form) to a .NET Double,
         /// as closely as possible.Values which are too small to be
-        /// represented are returned as an appropriately signed 0. 
-        /// Values which are too large to be represented (but not infinite) 
+        /// represented are returned as an appropriately signed 0.
+        /// Values which are too large to be represented (but not infinite)
         /// are returned as Double.NaN, as are unsupported values and actual NaN values.
-        /// 
+        ///
         /// Credits : Jon Skeet (http://groups.google.com/groups?selm=MPG.19a6985d4683f5d398a313%40news.microsoft.com)
         /// </summary>
         /// <param name="extended">Extended data to be converted</param>
         /// <returns>Converted value, or Double.NaN if unsupported or NaN</returns>
         public static double ExtendedToDouble(byte[] extended)
         {
-            // Read information from the extended form - variable names as 
+            // Read information from the extended form - variable names as
             // used in http://cch.loria.fr/documentation/
             // IEEE754/numerical_comp_guide/ncg_math.doc.html
             int s = extended[9] >> 7;
@@ -678,9 +517,9 @@ namespace ATL
             {
                 if (e == 0)
                 {
-                    // Value = (-1)^s * 2^16382*1.f 
+                    // Value = (-1)^s * 2^16382*1.f
                     // (Pseudo-denormal numbers)
-                    // Anything pseudo-denormal in extended form is 
+                    // Anything pseudo-denormal in extended form is
                     // definitely 0 in double form.
                     return FromComponents(s, 0, 0);
                 }
@@ -724,7 +563,7 @@ namespace ATL
                     }
                     else
                     {
-                        // Don't really understand the document about the 
+                        // Don't really understand the document about the
                         // remaining two values, but they're both NaN...
                         return Double.NaN;
                     }
@@ -734,7 +573,7 @@ namespace ATL
             {
                 if (e == 0)
                 {
-                    // Either 0 or a subnormal number, which will 
+                    // Either 0 or a subnormal number, which will
                     // still be 0 in double form
                     return FromComponents(s, 0, 0);
                 }
@@ -748,7 +587,7 @@ namespace ATL
 
         /// <summary>
         /// Returns a double from the IEEE sign/exponent/fraction components
-        /// 
+        ///
         /// Credits : Jon Skeet (http://groups.google.com/groups?selm=MPG.19a6985d4683f5d398a313%40news.microsoft.com)
         /// </summary>
         /// <param name="s">IEEE sign component</param>
@@ -757,7 +596,7 @@ namespace ATL
         /// <returns>Converted double</returns>
         private static double FromComponents(int s, int e, long f)
         {
-            byte[] data = new byte[8];
+            Span<byte> data = stackalloc byte[8];
 
             // Put the data into appropriate slots based on endianness.
             if (BitConverter.IsLittleEndian)
@@ -783,13 +622,13 @@ namespace ATL
                 data[7] = (byte)(f & 0xff);
             }
 
-            return BitConverter.ToDouble(data, 0);
+            return BitConverter.ToDouble(data);
         }
 
         /// <summary>
         /// Advance the given Stream until a new value is encountered.
         /// NB : A series of successive identical bytes is called "padding zone"
-        /// 
+        ///
         /// Warning : There is no contract regarding the position within the stream at the end of the call.
         /// It might be anywhere around the end of the padding zone.
         /// </summary>

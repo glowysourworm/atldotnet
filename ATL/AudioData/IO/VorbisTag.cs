@@ -7,20 +7,23 @@ using static ATL.AudioData.FileStructureHelper;
 using System.Linq;
 using static ATL.TagData;
 using System.Threading.Tasks;
+using System.Buffers.Binary;
 
 namespace ATL.AudioData.IO
 {
     /// <summary>
     /// Class for Vorbis tags (VorbisComment) manipulation
-    /// 
+    ///
     /// TODO - Rewrite as "pure" helper, with Ogg and FLAC inheriting MetaDataIO
-    /// 
+    ///
     /// </summary>
     partial class VorbisTag : MetaDataIO
     {
         private const string PICTURE_METADATA_ID_NEW = "METADATA_BLOCK_PICTURE";
         private const string PICTURE_METADATA_ID_OLD = "COVERART";
         public const string VENDOR_METADATA_ID = "VORBIS-VENDOR";
+
+        public const string CHAPTER_ID = "CHAPTER";
 
         // empty vendor with zero fields, plus final framing bit
         private static readonly byte[] OGG_CORE_SIGNATURE = { 0, 0, 0, 0, 0, 0, 0, 0, 1 };
@@ -158,17 +161,17 @@ namespace ATL.AudioData.IO
             VorbisMetaDataBlockPicture result = new VorbisMetaDataBlockPicture();
 
             BinaryReader r = new BinaryReader(s);
-            result.nativePicCode = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
+            result.nativePicCode = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
             result.picType = ID3v2.DecodeID3v2PictureType(result.nativePicCode);
-            var stringLen = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
+            var stringLen = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
             result.mimeType = Utils.Latin1Encoding.GetString(r.ReadBytes(stringLen));
-            stringLen = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
+            stringLen = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
             result.description = Encoding.UTF8.GetString(r.ReadBytes(stringLen));
-            result.width = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
-            result.height = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
-            result.colorDepth = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
-            result.colorNum = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
-            result.picDataLength = StreamUtils.DecodeBEInt32(r.ReadBytes(4));
+            result.width = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
+            result.height = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
+            result.colorDepth = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
+            result.colorNum = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
+            result.picDataLength = BinaryPrimitives.ReadInt32BigEndian(r.ReadBytes(4));
 
             result.picDataOffset = 4 + 4 + result.mimeType.Length + 4 + result.description.Length + 4 + 4 + 4 + 4 + 4;
 
@@ -183,7 +186,7 @@ namespace ATL.AudioData.IO
             // NB : Handled this way to retrieve badly formatted chapter indexes (e.g. CHAPTER2, CHAPTER02NAME...)
             int i = 7;
             while (i < fieldName.Length && char.IsDigit(fieldName[i])) i++;
-            uint chapterId = uint.Parse(fieldName.Substring(7, i - 7));
+            uint chapterId = uint.Parse(fieldName.AsSpan(7, i - 7));
 
             ChapterInfo info = tagData.Chapters.FirstOrDefault(c => c.UniqueNumericID == chapterId);
             if (null == info)
@@ -380,7 +383,7 @@ namespace ATL.AudioData.IO
                     {
                         strData = Encoding.UTF8.GetString(reader.ReadBytes(size - equalsIndex - 1)).Trim();
 
-                        if (tagId.StartsWith("CHAPTER", StringComparison.OrdinalIgnoreCase)) // Chapter description
+                        if (tagId.StartsWith(CHAPTER_ID, StringComparison.OrdinalIgnoreCase)) // Chapter description
                         {
                             setChapterData(tagId, strData);
                         }
@@ -566,10 +569,10 @@ namespace ATL.AudioData.IO
                     : (int)chapterInfo.UniqueNumericID;
                 // Specs says chapter index if formatted over 3 chars
                 var formattedIndex = Utils.BuildStrictLengthString(chapterIndex, 3, '0', false);
-                writeTextFrame(w, "CHAPTER" + formattedIndex, Utils.EncodeTimecode_ms(chapterInfo.StartTime));
-                if (chapterInfo.Title.Length > 0) writeTextFrame(w, "CHAPTER" + formattedIndex + "NAME", chapterInfo.Title);
+                writeTextFrame(w, CHAPTER_ID + formattedIndex, Utils.EncodeTimecode_ms(chapterInfo.StartTime));
+                if (chapterInfo.Title.Length > 0) writeTextFrame(w, CHAPTER_ID + formattedIndex + "NAME", chapterInfo.Title);
                 if (chapterInfo.Url != null && chapterInfo.Url.Url.Length > 0)
-                    writeTextFrame(w, "CHAPTER" + formattedIndex + "URL", chapterInfo.Url.Url);
+                    writeTextFrame(w, CHAPTER_ID + formattedIndex + "URL", chapterInfo.Url.Url);
             }
         }
 
@@ -582,7 +585,7 @@ namespace ATL.AudioData.IO
             w.Write(Utils.Latin1Encoding.GetBytes(frameCode + "="));
             w.Write(Encoding.UTF8.GetBytes(text));
 
-            // Go back to frame size location to write its actual size 
+            // Go back to frame size location to write its actual size
             var finalFramePos = w.Position;
             w.Seek(frameSizePos, SeekOrigin.Begin);
             w.Write(StreamUtils.EncodeUInt32((uint)(finalFramePos - frameSizePos - 4)));
@@ -602,7 +605,7 @@ namespace ATL.AudioData.IO
                 w.Write(Utils.EncodeTo64(picStream.ToArray()));
             }
 
-            // Go back to frame size location to write its actual size 
+            // Go back to frame size location to write its actual size
             var finalFramePos = w.Position;
             w.Seek(frameSizePos, SeekOrigin.Begin);
             w.Write(StreamUtils.EncodeUInt32((uint)(finalFramePos - frameSizePos - 4)));

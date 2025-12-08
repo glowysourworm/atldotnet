@@ -161,14 +161,14 @@ namespace ATL
                         StringBuilder dateTimeBuilder = new StringBuilder();
                         dateTimeBuilder.Append(year).Append('-');
                         dateTimeBuilder.Append(dayMonth.AsSpan(2, 2)).Append('-');
-                        dateTimeBuilder.Append(dayMonth[..2]);
+                        dateTimeBuilder.Append(dayMonth.AsSpan(0, 2));
                         string time = Utils.ProtectValue(tagData[Field.RECORDING_TIME]); // Try to add time if available
                         if (time.Length >= 4)
                         {
                             dateTimeBuilder.Append('T');
-                            dateTimeBuilder.Append(time[..2]).Append(':');
+                            dateTimeBuilder.Append(time.AsSpan(0, 2)).Append(':');
                             dateTimeBuilder.Append(time.AsSpan(2, 2)).Append(':');
-                            dateTimeBuilder.Append((6 == time.Length) ? time.Substring(4, 2) : "00");
+                            dateTimeBuilder.Append((6 == time.Length) ? time.AsSpan(4, 2) : "00");
                         }
                         success = DateTime.TryParse(dateTimeBuilder.ToString(), out result);
                     }
@@ -192,9 +192,9 @@ namespace ATL
                         string time = Utils.ProtectValue(tagData[Field.RECORDING_TIME]); // Try to add time if available
                         if (time.Length < 4 || !Utils.IsNumeric(time)) return result;
 
-                        result.AddHours(int.Parse(time[..2]));
+                        result.AddHours(int.Parse(time.AsSpan(0, 2)));
                         result.AddMinutes(int.Parse(time.AsSpan(2, 2)));
-                        if (6 == time.Length) result.AddSeconds(int.Parse(time.Substring(4, 2)));
+                        if (6 == time.Length) result.AddSeconds(int.Parse(time.AsSpan(4, 2)));
                     }
                 }
                 return result;
@@ -263,8 +263,7 @@ namespace ATL
         {
             get
             {
-                DateTime result;
-                if (!DateTime.TryParse(tagData[Field.PUBLISHING_DATE], out result))
+                if (!DateTime.TryParse(tagData[Field.PUBLISHING_DATE], out var result))
                     result = DateTime.MinValue;
                 return result;
             }
@@ -281,12 +280,9 @@ namespace ATL
         {
             get
             {
-                if (!float.TryParse(tagData[Field.RATING], out var result))
-                {
-                    if (Settings.NullAbsentValues) return null;
-                    return 0f;
-                }
-                return result;
+                if (float.TryParse(tagData[Field.RATING], out var result)) return result;
+                if (Settings.NullAbsentValues) return null;
+                return 0f;
             }
             set => tagData.IntegrateValue(Field.RATING, (null == value) ? null : value.ToString());
         }

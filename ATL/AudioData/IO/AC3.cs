@@ -1,3 +1,5 @@
+using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using static ATL.AudioData.AudioDataManager;
@@ -13,7 +15,7 @@ namespace ATL.AudioData.IO
         // Standard bitrates (KBit/s)
         private static readonly int[] BITRATES = { 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 448, 512, 576, 640 };
 
-        // Private declarations 
+        // Private declarations
         private uint sampleRate;
 
 
@@ -72,9 +74,9 @@ namespace ATL.AudioData.IO
 
         // ---------- SUPPORT METHODS
 
-        public static bool IsValidHeader(byte[] data)
+        public static bool IsValidHeader(ReadOnlySpan<byte> data)
         {
-            return 30475 == StreamUtils.DecodeUInt16(data);
+            return 30475 == BinaryPrimitives.ReadUInt16LittleEndian(data);
         }
 
         private static ChannelsArrangement getChannelsArrangement(int amode, bool isLfePresent)
@@ -97,9 +99,9 @@ namespace ATL.AudioData.IO
         {
             resetData();
 
-            byte[] buffer = new byte[2];
+            Span<byte> buffer = stackalloc byte[2];
             source.Seek(0, SeekOrigin.Begin);
-            if (source.Read(buffer, 0, 2) < 2) return false;
+            if (source.Read(buffer) < 2) return false;
 
             if (!IsValidHeader(buffer)) return false;
 
@@ -107,7 +109,7 @@ namespace ATL.AudioData.IO
             AudioDataSize = sizeNfo.FileSize - sizeNfo.APESize - sizeNfo.ID3v1Size - AudioDataOffset;
 
             source.Seek(2, SeekOrigin.Current);
-            if (source.Read(buffer, 0, 1) < 1) return false;
+            if (source.Read(buffer) < 2) return false;
 
             // fscod
             sampleRate = (buffer[0] & 0xC0) switch
@@ -121,8 +123,7 @@ namespace ATL.AudioData.IO
             // frmsizecod
             BitRate = BITRATES[(buffer[0] & 0x3F) >> 1];
 
-            source.Seek(1, SeekOrigin.Current);
-            if (source.Read(buffer, 0, 2) < 2) return false;
+            if (source.Read(buffer) < 2) return false;
 
             // acmod, lfeon
             ChannelsArrangement = getChannelsArrangement(buffer[0] & 0xE0, (buffer[1] & 0x80) > 0);

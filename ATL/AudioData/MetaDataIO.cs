@@ -3,6 +3,7 @@ using Commons;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using static ATL.AudioData.FileStructureHelper;
 using static ATL.TagData;
@@ -82,6 +83,11 @@ namespace ATL.AudioData.IO
             /// True : read all data that will be useful for writing; False : only read metadata values
             /// </summary>
             public bool PrepareForWriting { get; set; }
+
+            /// <summary>
+            /// True : read all data that will be useful for removing metadata; False : only read metadata values
+            /// </summary>
+            public bool PrepareForRemoving { get; set; }
 
             /// <summary>
             /// True : read extra padding bytes at the end of ID3v2 block
@@ -179,11 +185,7 @@ namespace ATL.AudioData.IO
         {
             get
             {
-                long result = 0;
-
-                foreach (Zone zone in Zones) result += zone.Size;
-
-                return result;
+                return Zones.Sum(zone => zone.Size);
             }
         }
         /// <summary>
@@ -374,7 +376,7 @@ namespace ATL.AudioData.IO
         }
 
         /// <summary>
-        /// Set a new metadata field with the given information 
+        /// Set a new metadata field with the given information
         /// </summary>
         /// <param name="ID">ID of the metadata field</param>
         /// <param name="dataIn">Metadata</param>
@@ -521,7 +523,7 @@ namespace ATL.AudioData.IO
         {
             if (Settings.AutoFormatAdditionalDates && value.StartsWith(DATETIME_PREFIX, StringComparison.OrdinalIgnoreCase))
             {
-                return EncodeDate(DateTime.FromFileTime(long.Parse(value[DATETIME_PREFIX.Length..])));
+                return EncodeDate(DateTime.FromFileTime(long.Parse(value.AsSpan()[DATETIME_PREFIX.Length..])));
             }
             return value;
         }
@@ -605,13 +607,14 @@ namespace ATL.AudioData.IO
             // ID3v2 embedder
             if (m_embedder is { Id3v2Zone: not null } && getImplementedTagType() == MetaDataIOFactory.TagType.ID3V2)
             {
-                structureHelper.Clear();
+                // Remove default zone created by the ID3v2 reader
+                structureHelper.RemoveZone(ID3v2.ZONE_ID3V2);
                 structureHelper.AddZone(m_embedder.Id3v2Zone);
                 var removeZone = m_embedder.Id3v2OldZone;
                 if (removeZone != null) structureHelper.AddZone(removeZone);
             }
 
-            // Give engine something to work with if the tag is really empty
+            // Give the engine something to work with if the tag is really empty
             if (!Exists && 0 == Zones.Count) structureHelper.AddZone(0, 0);
 
             // Merge existing information + new tag information
@@ -661,8 +664,9 @@ namespace ATL.AudioData.IO
 
         private void handleEmbedder()
         {
-            if (m_embedder == null || getImplementedTagType() != MetaDataIOFactory.TagType.ID3V2) return;
-            structureHelper.Clear();
+            if (m_embedder == null || getImplementedTagType() != MetaDataIOFactory.TagType.ID3V2 || m_embedder.HasEmbeddedID3v2 < 1) return;
+            // Remove default zone created by the ID3v2 reader
+            structureHelper.RemoveZone(ID3v2.ZONE_ID3V2);
             structureHelper.AddZone(m_embedder.Id3v2Zone);
         }
 

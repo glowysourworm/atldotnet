@@ -403,21 +403,21 @@ namespace ATL.AudioData
             {
                 try
                 {
-                    var theMetaIO = getMeta(tagType);
+                    var metaIO = getMeta(tagType);
 
                     var s = targetStream ?? new FileStream(targetPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, bufferSize, fileOptions | FileOptions.Asynchronous);
                     try
                     {
                         // If current file can embed metadata, do a 1st pass to detect embedded metadata position
-                        handleEmbedder(s, theMetaIO);
+                        handleEmbedder(s, metaIO);
 
                         ProgressToken<float> progress = writeProgress?.CreateProgressToken();
                         var args = new WriteTagParams
                         {
                             ExtraID3v2PaddingDetection = isMetaSupported(TagType.ID3V2)
                         };
-                        result = await theMetaIO.WriteAsync(s, theTag, args, progress);
-                        if (result) setMeta(theMetaIO);
+                        result = await metaIO.WriteAsync(s, theTag, args, progress);
+                        if (result) setMeta(metaIO);
                     }
                     finally
                     {
@@ -438,7 +438,7 @@ namespace ATL.AudioData
             return result;
         }
 
-        private void handleEmbedder(Stream r, IMetaDataIO theMetaIO)
+        private void handleEmbedder(Stream r, IMetaDataIO metaIO)
         {
             if (audioDataIO is not IMetaDataEmbedder embedder) return;
 
@@ -448,7 +448,7 @@ namespace ATL.AudioData
             };
 
             read(r, readTagParams);
-            theMetaIO.SetEmbedder(embedder);
+            metaIO.SetEmbedder(embedder);
 
             sizeInfo.IsID3v2Embedded = embedder.HasEmbeddedID3v2 > 0;
         }
@@ -470,9 +470,17 @@ namespace ATL.AudioData
                 var s = stream ?? new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.None, bufferSize, fileOptions | FileOptions.Asynchronous);
                 try
                 {
-                    result = read(s, false, false, true);
+                    result = read(s, prepareForWriting: true, prepareForRemoving: true);
 
                     IMetaDataIO metaIO = getMeta(tagType);
+
+                    // If current file can embed metadata, do a 1st pass to detect embedded metadata position
+                    if (audioDataIO is IMetaDataEmbedder embedder)
+                    {
+                        metaIO.SetEmbedder(embedder);
+                        sizeInfo.IsID3v2Embedded = embedder.HasEmbeddedID3v2 > 0;
+                    }
+
                     var args = new WriteTagParams
                     {
                         ExtraID3v2PaddingDetection = isMetaSupported(TagType.ID3V2)
@@ -493,11 +501,17 @@ namespace ATL.AudioData
             return result;
         }
 
-        private bool read(Stream source, bool readEmbeddedPictures = false, bool readAllMetaFrames = false, bool prepareForWriting = false)
+        private bool read(
+            Stream source,
+            bool readEmbeddedPictures = false,
+            bool readAllMetaFrames = false,
+            bool prepareForWriting = false,
+            bool prepareForRemoving = false)
         {
             ReadTagParams readTagParams = new ReadTagParams(readEmbeddedPictures, readAllMetaFrames)
             {
-                PrepareForWriting = prepareForWriting
+                PrepareForWriting = prepareForWriting,
+                PrepareForRemoving = prepareForRemoving
             };
 
             return read(source, readTagParams);
@@ -518,8 +532,8 @@ namespace ATL.AudioData
             ID3v2.Clear();
             // Test for ID3v2 regardless of it being supported, to properly handle files with illegal ID3v2 tags
             source.Position = 0;
-            byte[] data = new byte[32];
-            if (32 == source.Read(data, 0, 32) && IO.ID3v2.IsValidHeader(data))
+            Span<byte> data = stackalloc byte[32];
+            if (32 == source.Read(data) && IO.ID3v2.IsValidHeader(data))
             {
                 source.Position = 0;
                 readTagParams.ExtraID3v2PaddingDetection = isMetaSupported(TagType.ID3V2);
