@@ -2,6 +2,8 @@
 
 __Latest stable version__ : [![NuGet](https://img.shields.io/nuget/v/z440.atl.core.svg)](https://www.nuget.org/packages/z440.atl.core/) [![Publish to NuGet Gallery](https://github.com/Zeugma440/atldotnet/actions/workflows/nuget_build_release.yml/badge.svg)](https://github.com/Zeugma440/atldotnet/actions/workflows/nuget_build_release.yml)
 
+__NuGet Gallery__ : https://www.nuget.org/packages/z440.atl.core/
+
 __Optimized with__ : [ReSharper](https://jb.gg/OpenSourceSupport), [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) and [CodeTrack](http://www.getcodetrack.com/)
 
 ## Current status
