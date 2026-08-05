@@ -307,7 +307,7 @@ namespace ATL.AudioData.IO
                 MetaFieldInfo fieldInfo = new MetaFieldInfo(getImplementedTagType(), ID, data, streamNumber, language, zone);
                 if (tagData.AdditionalFields.Contains(fieldInfo)) // Prevent duplicates
                 {
-                    // If the value already exists, concatenate it with the new one
+                    // If the value already exists, concatenate it with the new one (stores multiple values when implemented as successive additional fields)
                     foreach (var info in tagData.AdditionalFields.Where(info => info.Equals(fieldInfo)))
                     {
                         fieldInfo.Value = info.Value + Settings.InternalValueSeparator + fieldInfo.Value;
@@ -315,6 +315,7 @@ namespace ATL.AudioData.IO
 
                     tagData.AdditionalFields.Remove(fieldInfo);
                 }
+
                 tagData.AdditionalFields.Add(fieldInfo);
             }
         }
@@ -354,25 +355,29 @@ namespace ATL.AudioData.IO
                     StringBuilder tagIdBuilder = new StringBuilder();
                     byte[] stringData = new byte[KEY_BUFFER];
                     int equalsIndex = -1;
-                    int nbBuffered = -1;
+                    int nbRead = 0;
+                    int nbBuffered = 0;
 
-                    while (-1 == equalsIndex)
+                    while (-1 == equalsIndex && nbBuffered <= size)
                     {
-                        int nbRead = reader.Read(stringData, 0, KEY_BUFFER);
-                        nbBuffered++;
+                        nbBuffered += nbRead;
+                        nbRead = reader.Read(stringData, 0, KEY_BUFFER);
 
                         for (int i = 0; i < nbRead; i++)
                         {
                             if (stringData[i] != 0x3D) continue; // '=' character
-                            equalsIndex = i;
+                            if (nbBuffered + equalsIndex < size) equalsIndex = i;
+
                             break;
                         }
 
-                        tagIdBuilder.Append(Utils.Latin1Encoding.GetString(stringData, 0, (-1 == equalsIndex) ? nbRead : equalsIndex));
+                        tagIdBuilder.Append(Utils.Latin1Encoding.GetString(stringData, 0, -1 == equalsIndex ? nbRead : equalsIndex));
                     }
-                    equalsIndex += KEY_BUFFER * nbBuffered;
-                    reader.Seek(position + equalsIndex + 1, SeekOrigin.Begin);
 
+                    if (equalsIndex > -1) equalsIndex += nbBuffered;
+                    else tagIdBuilder.Clear();
+
+                    reader.Seek(position + equalsIndex + 1, SeekOrigin.Begin);
                     string tagId = tagIdBuilder.ToString().ToUpper();
 
                     if (tagId.Equals(PICTURE_METADATA_ID_NEW) || tagId.Equals(PICTURE_METADATA_ID_OLD))
@@ -529,7 +534,7 @@ namespace ATL.AudioData.IO
             foreach (MetaFieldInfo fieldInfo in tag.AdditionalFields.Where(isMetaFieldWritable))
             {
                 if (fieldInfo.NativeFieldCode.Equals(VENDOR_METADATA_ID)
-                    || writtenFieldCodes.Contains(fieldInfo.NativeFieldCode.ToUpper())) continue;
+                    || writtenFieldCodes.Contains(fieldInfo.NativeFieldCode)) continue;
 
                 string value = FormatBeforeWriting(fieldInfo.Value);
                 if (value.Contains(Settings.DisplayValueSeparator + ""))

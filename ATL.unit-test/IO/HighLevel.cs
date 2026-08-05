@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using ATL.AudioData;
 using System.Drawing;
+using System.Text;
 using ATL.test.IO.MetaData;
 using static ATL.Logging.Log;
 using ATL.Logging;
@@ -1278,6 +1279,18 @@ namespace ATL.test.IO
         {
             tagIO_RW_Year_or_Date_On_File("MP4/empty.m4a", "MP4/mp4.m4a", "MP4/mp4_date_in_©day.m4a", 20, 26);
             tagIO_RW_Year_or_Date_On_File("OGG/empty.ogg", "OGG/chapters.ogg", "OGG/ogg.ogg", 9, 15);
+            tagIO_RW_Year_or_Date_On_File("WMA/empty_full.wma", "WMA/wma.wma", "WMA/date_in_year.wma", 10, 22);
+
+            MetaDataIOFactory.TagType defType = ATL.Settings.DefaultTagsWhenNoMetadata[0];
+            ATL.Settings.DefaultTagsWhenNoMetadata[0] = MetaDataIOFactory.TagType.APE;
+            try
+            {
+                tagIO_RW_Year_or_Date_On_File("MP3/empty.mp3", "MP3/APE.mp3", "MP3/ape_date_in_year.mp3", 4, 10);
+            }
+            finally
+            {
+                ATL.Settings.DefaultTagsWhenNoMetadata[0] = defType;
+            }
         }
 
         private void tagIO_RW_Year_or_Date_On_File(
@@ -1387,7 +1400,9 @@ namespace ATL.test.IO
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
                 if (filePath.EndsWith("ogg")) return getVorbisDateFieldLength(fs);
+                if (filePath.EndsWith("wma")) return getWmaDateFieldLength(fs);
                 if (filePath.EndsWith("m4a")) return getMP4DateFieldLength(fs);
+                if (filePath.EndsWith("mp3")) return getApeDateFieldLength(fs);
                 return -1;
             }
         }
@@ -1415,6 +1430,24 @@ namespace ATL.test.IO
         {
             Assert.AreEqual(true, StreamUtils.FindSequence(s, Utils.Latin1Encoding.GetBytes("©day")));
             byte[] buffer = new byte[4];
+            s.Read(buffer, 0, 4);
+            return BinaryPrimitives.ReadInt32BigEndian(buffer);
+        }
+
+        private int getApeDateFieldLength(Stream s)
+        {
+            Assert.AreEqual(true, StreamUtils.FindSequence(s, Utils.Latin1Encoding.GetBytes("YEAR")));
+            byte[] buffer = new byte[4];
+            s.Seek(-12, SeekOrigin.Current);
+            s.Read(buffer, 0, 4);
+            return BinaryPrimitives.ReadInt32LittleEndian(buffer);
+        }
+
+        private int getWmaDateFieldLength(Stream s)
+        {
+            Assert.AreEqual(true, StreamUtils.FindSequence(s, Encoding.BigEndianUnicode.GetBytes("WM/Year")));
+            byte[] buffer = new byte[4];
+            s.Seek(2, SeekOrigin.Current);
             s.Read(buffer, 0, 4);
             return BinaryPrimitives.ReadInt32BigEndian(buffer);
         }

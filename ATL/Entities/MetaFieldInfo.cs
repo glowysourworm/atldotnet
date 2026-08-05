@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using ATL.AudioData;
 using Commons;
 using HashDepot;
@@ -137,7 +138,7 @@ namespace ATL
         /// <returns>String representation of the object that doesn't take its zone into account</returns>
         public string ToStringWithoutZone()
         {
-            return 100 + TagType + NativeFieldCode + Utils.BuildStrictLengthString(StreamNumber.ToString(), 5, '0', false) + Language;
+            return 100 + (int)TagType + NativeFieldCode + Utils.BuildStrictLengthString(StreamNumber.ToString(), 5, '0', false) + Language;
         }
 
         /// <summary>
@@ -146,7 +147,7 @@ namespace ATL
         /// <returns>String representation of the object</returns>
         public override string ToString()
         {
-            return 100 + TagType + NativeFieldCode + Utils.BuildStrictLengthString(StreamNumber.ToString(), 5, '0', false) + Language + Zone;
+            return 100 + (int)TagType + NativeFieldCode + Utils.BuildStrictLengthString(StreamNumber.ToString(), 5, '0', false) + Language + Zone;
         }
 
         /// <summary>
@@ -172,7 +173,7 @@ namespace ATL
             if (obj.GetType() != this.GetType()) return false;
 
             // Call the implementation from IEquatable
-            return this.ToStringWithoutZone().Equals(((MetaFieldInfo)obj).ToStringWithoutZone());
+            return this.ToStringWithoutZone().Equals(((MetaFieldInfo)obj).ToStringWithoutZone(), StringComparison.InvariantCultureIgnoreCase);
         }
 
         /// <summary>
@@ -185,7 +186,7 @@ namespace ATL
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
 
-            bool result = MetaDataIOFactory.TagType.ANY == obj.TagType && obj.NativeFieldCode.Equals(this.NativeFieldCode);
+            bool result = MetaDataIOFactory.TagType.ANY == obj.TagType && obj.NativeFieldCode.Equals(this.NativeFieldCode, StringComparison.InvariantCultureIgnoreCase);
             if (obj.StreamNumber > 0) result = result && obj.StreamNumber == this.StreamNumber;
             if (obj.Language.Length > 0) result = result && obj.Language.Equals(this.Language);
 
