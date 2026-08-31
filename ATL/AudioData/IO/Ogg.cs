@@ -584,7 +584,7 @@ namespace ATL.AudioData.IO
                 //
                 // NB : Only detects bitstream headers positioned at the beginning of the file
                 OggPageHeader pageHeader;
-                source.Seek(0, SeekOrigin.Begin);
+                source.Seek(sizeInfo.ID3v2Size, SeekOrigin.Begin); // It shouldn't be there but it does happen in the wild
                 do
                 {
                     pageOffsets.Add(source.Position);
