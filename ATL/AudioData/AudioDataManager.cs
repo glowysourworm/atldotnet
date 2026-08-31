@@ -1,11 +1,14 @@
 ﻿using ATL.AudioData.IO;
 using ATL.Logging;
+
 using Commons;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+
 using static ATL.AudioData.IO.MetaDataIO;
 using static ATL.AudioData.MetaDataIOFactory;
 
@@ -250,41 +253,41 @@ namespace ATL.AudioData
                     result.Add(supportedMetas[0]);
                     break;
                 default:
+                {
+                    switch (audioDataIO)
                     {
-                        switch (audioDataIO)
+                        // TODO this is ugly (see #249)
+                        case OptimFrog:
+                            result.Add(TagType.APE);
+                            break;
+                        case WAV:
+                            result.Add(TagType.ID3V2);
+                            result.Add(TagType.NATIVE);
+                            break;
+                        default:
                         {
-                            // TODO this is ugly (see #249)
-                            case OptimFrog:
-                                result.Add(TagType.APE);
-                                break;
-                            case WAV:
-                                result.Add(TagType.ID3V2);
-                                result.Add(TagType.NATIVE);
-                                break;
-                            default:
+                            var id3v2Exists = supportedMetas.Contains(TagType.ID3V2);
+                            bool isNativeRich = audioDataIO.IsNativeMetadataRich && supportedMetas.Exists(meta => meta == TagType.NATIVE);
+                            foreach (var meta in supportedMetas.Where(meta => meta != TagType.ID3V1))
+                            {
+                                switch (meta)
                                 {
-                                    var id3v2Exists = supportedMetas.Contains(TagType.ID3V2);
-                                    bool isNativeRich = audioDataIO.IsNativeMetadataRich && supportedMetas.Exists(meta => meta == TagType.NATIVE);
-                                    foreach (var meta in supportedMetas.Where(meta => meta != TagType.ID3V1))
-                                    {
-                                        switch (meta)
-                                        {
-                                            case TagType.NATIVE when isNativeRich:
-                                            // If poor native metadata
-                                            case TagType.ID3V2 when !isNativeRich:
-                                            // If no ID3v2 support and poor native metadata
-                                            case TagType.APE when !id3v2Exists && !isNativeRich:
-                                                result.Add(meta);
-                                                break;
-                                        }
-                                    }
-
-                                    break;
+                                    case TagType.NATIVE when isNativeRich:
+                                    // If poor native metadata
+                                    case TagType.ID3V2 when !isNativeRich:
+                                    // If no ID3v2 support and poor native metadata
+                                    case TagType.APE when !id3v2Exists && !isNativeRich:
+                                        result.Add(meta);
+                                        break;
                                 }
-                        }
+                            }
 
-                        break;
+                            break;
+                        }
                     }
+
+                    break;
+                }
             }
 
             return result;
@@ -344,31 +347,40 @@ namespace ATL.AudioData
         /// <returns>True if the operation succeeds; false if an issue happened (in that case, the problem is logged on screen + in a Log)</returns>
         public bool ReadFromFile(bool readEmbeddedPictures = false, bool readAllMetaFrames = false)
         {
-            bool result;
             LogDelegator.GetLocateDelegate()(fileName);
 
             resetData();
 
+            // Performance Issue:  During file reading, any corrupt file will throw an exception. So, a server process will
+            //                     get bogged down with exception handling. It would grealy help to find corrupt files beforee
+            //                     processing.
+            //
+            Stream localStream = null;
+
             try
             {
                 // Open file, read first block of data and search for a frame		  
-                Stream s = stream ?? new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, fileOptions);
-                try
-                {
-                    result = read(s, readEmbeddedPictures, readAllMetaFrames);
-                }
-                finally
-                {
-                    if (null == stream) s.Close();
-                }
+                localStream = stream ?? new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, fileOptions);
+
+                // This is the simplest way to look for a corrupt file stream. But, the sequential reading should also be considered
+                // for performance. MSFT says it "may help" giving hints to their backend; but it would be hard to know until it is
+                // benchmarked
+                //
+                if (localStream.Length > 0)
+                    return read(localStream, readEmbeddedPictures, readAllMetaFrames);
+
+                return false;
             }
             catch (Exception e)
             {
                 Utils.TraceException(e);
-                result = false;
+                return false;
             }
-
-            return result;
+            finally
+            {
+                if (null == stream)
+                    localStream.Close();
+            }
         }
 
         /// <summary>
